@@ -20,7 +20,7 @@ scheduler.end()
 print("Done! Results can be found in the log file.") 
 ```
 
-some_python_file.py:
+`log_number.py`:
 ```
 from random import choice
 from scheduler.worker import BasicWorker
