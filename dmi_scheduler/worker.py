@@ -6,7 +6,7 @@ import threading
 import time
 import abc
 
-from scheduler.exceptions import WorkerInterruptedException
+from dmi_scheduler.exceptions import WorkerInterruptedException
 
 
 class BasicWorker(threading.Thread, metaclass=abc.ABCMeta):

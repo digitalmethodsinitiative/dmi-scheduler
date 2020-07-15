@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="dmi-scheduler",
-    version="0.5",
+    version="0.6.0",
     author="Digital Methods Initiative",
     author_email="stijn.peeters@uva.nl",
     description="A lightweight task scheduler",
@@ -13,6 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/digitalmethodsinitiative/dmi-scheduler",
     packages=setuptools.find_packages(),
+    include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

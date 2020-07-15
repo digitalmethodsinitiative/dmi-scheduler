@@ -6,7 +6,7 @@ import time
 import json
 import math
 
-from scheduler.exceptions import JobClaimedException, JobNotFoundException
+from dmi_scheduler.exceptions import JobClaimedException, JobNotFoundException
 
 
 class Job:

@@ -5,7 +5,7 @@ import time
 import json
 
 from uuid import uuid4
-from scheduler.job import Job
+from dmi_scheduler.job import Job
 import psycopg2
 
 

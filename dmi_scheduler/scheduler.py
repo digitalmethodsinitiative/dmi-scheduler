@@ -1,4 +1,4 @@
-from scheduler.manager import WorkerManager
+from dmi_scheduler.manager import WorkerManager
 
 
 class Scheduler:

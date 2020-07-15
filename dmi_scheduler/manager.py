@@ -14,10 +14,10 @@ from types import ModuleType
 from importlib.machinery import SourceFileLoader
 from logging.handlers import RotatingFileHandler
 
-from scheduler.worker import BasicWorker
-from scheduler.queue import JobQueue
-from scheduler.database import Database
-from scheduler.exceptions import JobClaimedException
+from dmi_scheduler.worker import BasicWorker
+from dmi_scheduler.queue import JobQueue
+from dmi_scheduler.database import Database
+from dmi_scheduler.exceptions import JobClaimedException
 
 
 class WorkerManager(threading.Thread):
@@ -142,7 +142,7 @@ class WorkerManager(threading.Thread):
 		jobs = self.queue.get_all_jobs()
 
 		num_active = sum([len(self._worker_pool[pythonfile]) for pythonfile in self._worker_pool])
-		self._log.info("Running workers: %i" % num_active)
+		self._log.debug("Running workers: %i" % num_active)
 
 		# clean up workers that have finished processing
 		for pythonfile in self._worker_pool:
