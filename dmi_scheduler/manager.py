@@ -106,6 +106,8 @@ class WorkerManager(threading.Thread):
 			self._log = logging.getLogger("dmi-scheduler")
 			self._log.setLevel(config.get("loglevel", kwargs.get("loglevel", logging.INFO)))
 			self._log.addHandler(handler)
+		else:
+			self._log = kwargs.get("logger")
 
 		# instantiate database handler - login _needs_ to be supplied via
 		# either constructor args or config file
