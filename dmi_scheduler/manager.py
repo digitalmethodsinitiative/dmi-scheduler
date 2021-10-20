@@ -61,6 +61,10 @@ class WorkerManager(threading.Thread):
 		:param int logcount:  When using the default rotating logger, this
 		determines how many log files to keep. Defaults to 1.
 
+		:param str logformat:  When using the default rotating logger, this
+		determines the format. Defaults to "%(asctime)s [%(levelname)-5.5s]
+		%(message)s" and uses logging.Formatter().
+
 		:param int loglevel: When using the default rotating logger, this
 		determines what level of log message to save in the log. Defaults to
 		logging.INFO.
@@ -102,6 +106,8 @@ class WorkerManager(threading.Thread):
 				maxBytes=int(config.get("logsize", kwargs.get("logsize", 50 * 1024 * 1024))),
 				backupCount=config.get("logcount", kwargs.get("logcount", 1))
 			)
+			logformat = config.get("logformat", kwargs.get("logformat", "%(asctime)s [%(levelname)-5.5s]  %(message)s"))
+			handler.setFormatter(logging.Formatter(logformat))
 
 			self._log = logging.getLogger("dmi-scheduler")
 			self._log.setLevel(config.get("loglevel", kwargs.get("loglevel", logging.INFO)))
