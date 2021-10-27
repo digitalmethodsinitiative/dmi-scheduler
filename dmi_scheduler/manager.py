@@ -69,6 +69,9 @@ class WorkerManager(threading.Thread):
 		determines what level of log message to save in the log. Defaults to
 		logging.INFO.
 
+		:param bool logstdout: if True, logger also prints to stdout.
+		Defaults to True.
+
 		:param str dbname:  Name of the PostgreSQL database used to store the
 		job queue.
 
@@ -112,6 +115,12 @@ class WorkerManager(threading.Thread):
 			self._log = logging.getLogger("dmi-scheduler")
 			self._log.setLevel(config.get("loglevel", kwargs.get("loglevel", logging.INFO)))
 			self._log.addHandler(handler)
+
+			if config.get("logstdout", kwargs.get("logstdout", True)):
+				consoleHandler = logging.StreamHandler(sys.stdout)
+				consoleHandler.setFormatter(logging.Formatter(logformat))
+				self._log.addHandler(consoleHandler)
+
 		else:
 			self._log = kwargs.get("logger")
 
