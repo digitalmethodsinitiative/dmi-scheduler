@@ -124,6 +124,14 @@ class WorkerManager(threading.Thread):
 		else:
 			self._log = kwargs.get("logger")
 
+		if 'slack_url' in kwargs or config.get('slack_url', False):
+			from dmi_scheduler.log_slack import SlackHandler
+			slack_handler = SlackHandler(config.get("slack_url", kwargs.get("slack_url")))
+			self._log.addHandler(slack_handler)
+			# turn off a particular message with "extra={'slack': False}"
+			from  dmi_scheduler.log_slack import SlackFilter
+			self._log.addFilter(SlackFilter(allow=True))
+
 		# instantiate database handler - login _needs_ to be supplied via
 		# either constructor args or config file
 		self._db = Database(
