@@ -166,8 +166,10 @@ class WorkerManager(threading.Thread):
 			all_workers = self._worker_pool[pythonfile]
 			for worker in all_workers:
 				if not worker.is_alive():
+					self._log.debug("Waiting for worker of type %s to rejoin..." % pythonfile)
 					worker.join()
 					self._worker_pool[pythonfile].remove(worker)
+					self._log.debug("Worker joined and ended.")
 
 			del all_workers
 
