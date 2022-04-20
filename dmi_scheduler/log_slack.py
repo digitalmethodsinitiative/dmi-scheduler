@@ -92,7 +92,7 @@ class SlackFormatter(Formatter):
 
     def format(self, record):
         record.message = super(SlackFormatter, self).format(record)
-        attachement = copy.deepcopy(self.attachment)
+        attachment = copy.deepcopy(self.attachment)
         attachment['text'] = attachment['text'] % record.__dict__
         attachment.update({'color': self.level_to_color[record.levelname]})
 
