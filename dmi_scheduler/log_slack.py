@@ -91,7 +91,7 @@ class SlackFormatter(Formatter):
 
     def format(self, record):
         record.message = super(SlackFormatter, self).format(record)
-        json_string = json.dumps(self.attachment) % record.__dict__
+        json_string = str(json.dumps(self.attachment) % record.__dict__)
 
         attachment = json.loads(json_string, strict=False)
         attachment.update({'color': self.level_to_color[record.levelname]})
