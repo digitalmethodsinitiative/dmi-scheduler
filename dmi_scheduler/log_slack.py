@@ -91,8 +91,7 @@ class SlackFormatter(Formatter):
 
     def format(self, record):
         record.message = super(SlackFormatter, self).format(record)
-        print(record)
-        self.attachment['text'] % record.__dict__
+        self.attachment['text'] = self.attachment['text'] % record.__dict__
         json_string = json.dumps(self.attachment)
 
         attachment = json.loads(json_string, strict=False)
