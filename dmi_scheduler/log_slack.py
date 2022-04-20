@@ -1,5 +1,6 @@
 from logging import getLogger, Handler, Formatter, Filter
 import platform
+import copy
 import sys
 import json
 import requests
@@ -91,9 +92,8 @@ class SlackFormatter(Formatter):
 
     def format(self, record):
         record.message = super(SlackFormatter, self).format(record)
-        json_string = json.dumps(self.attachment % record.__dict__)
-
-        attachment = json.loads(json_string, strict=False)
+        attachement = copy.deepcopy(self.attachment)
+        attachment['text'] = attachment['text'] % record.__dict__
         attachment.update({'color': self.level_to_color[record.levelname]})
 
         return attachment
