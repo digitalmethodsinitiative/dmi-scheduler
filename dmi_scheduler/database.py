@@ -3,6 +3,7 @@ Database wrapper
 """
 import psycopg2.extras
 import psycopg2
+import time
 
 from psycopg2 import sql
 from psycopg2.extras import execute_values
@@ -31,18 +32,60 @@ class Database:
 		:param port:  Database port
 		:param appname:  App name, mostly useful to trace connections in pg_stat_activity
 		"""
-
-		appname = "dmi-db" if not appname else "dmi-db-%s" % appname
-
-		self.connection = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port,
-										   application_name=appname)
-		self._cursor = self.connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 		self._log = logger
 
 		if self._log is None:
 			raise NotImplementedError()
 
+		self.appname = "dmi-db" if not appname else "dmi-db-%s" % appname
+
+		self.connection = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port,
+										   application_name=appname)
+		self._cursor = self.connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
 		self.commit()
+
+	def reconnect(self, tries=3, wait=10):
+		"""
+		Reconnect to the database
+		:param int tries: Number of tries to reconnect
+		:param int wait: Time to wait between tries (first try is immediate)
+		"""
+		error = None
+		for i in range(tries):
+			try:
+				self.connection = psycopg2.connect(dbname=self.connection.info.dbname,
+												   user=self.connection.info.user,
+												   password=self.connection.info.password,
+												   host=self.connection.info.host,
+												   port=self.connection.info.port,
+												   application_name=self.appname)
+				self._cursor = self.connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+				return
+			except (psycopg2.InterfaceError, psycopg2.OperationalError) as e:
+				error = e
+				self._log.warning(f"Database connection closed. Reconnecting...\n{e}")
+				time.sleep(wait)
+
+		self._log.error("Failed to reconnect to database after %d tries" % tries)
+		raise error
+
+	def get_cursor(self):
+		"""
+		Get a new cursor
+
+		Re-using cursors seems to give issues when using per-thread
+		connections, so simply instantiate a new one each time
+
+		:return: Cursor
+		"""
+		try:
+			return self.connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+		except (psycopg2.InterfaceError, psycopg2.OperationalError) as e:
+			self._log.warning(f"Database Exception: {e}\nReconnecting and retrying query...")
+			self.reconnect()
+			return self.connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
 
 	def query(self, query, replacements=None, cursor=None):
 		"""
@@ -60,23 +103,27 @@ class Database:
 
 		return cursor.execute(query, replacements)
 
-	def execute(self, query, replacements=None):
+	def execute(self, query, replacements=None, commit=True):
 		"""
 		Execute a query, and commit afterwards
 
 		This is required for UPDATE/INSERT/DELETE/etc to stick
 		:param string query:  Query
 		:param replacements: Replacement values
+		:param bool commit:  Whether to commit after executing the query
 		"""
 		cursor = self.get_cursor()
-
 		self._log.debug("Executing query %s" % self._cursor.mogrify(query, replacements))
 		cursor.execute(query, replacements)
-		self.commit()
 
+		if commit:
+			self.commit()
+
+		result = cursor.rowcount
 		cursor.close()
+		return result
 
-	def execute_many(self, query, replacements=None):
+	def execute_many(self, query, replacements=None, commit=True):
 		"""
 		Execute a query multiple times, each time with different values
 
@@ -85,9 +132,19 @@ class Database:
 
 		:param string query:  Query
 		:param replacements: A list of replacement values
+		:param bool commit:  Whether to commit after executing the query
 		"""
 		cursor = self.get_cursor()
-		execute_values(cursor, query, replacements)
+		try:
+			execute_values(cursor, query, replacements)
+		except (psycopg2.InterfaceError, psycopg2.OperationalError) as e:
+			self._log.warning(f"Database Exception: {e}\nReconnecting and retrying query...")
+			self.reconnect()
+			cursor = self.get_cursor()
+			execute_values(cursor, query, replacements)
+
+		if commit:
+			self.commit()
 		cursor.close()
 
 	def update(self, table, data, where=None, commit=True):
@@ -118,16 +175,7 @@ class Database:
 
 		query = sql.SQL(query).format(*identifiers)
 
-		cursor = self.get_cursor()
-		self._log.debug("Executing query: %s" % cursor.mogrify(query, replacements))
-		cursor.execute(query, replacements)
-
-		if commit:
-			self.commit()
-
-		result = cursor.rowcount
-		cursor.close()
-		return result
+		return self.execute(query, replacements, commit=commit)
 
 	def delete(self, table, where, commit=True):
 		"""
@@ -147,16 +195,7 @@ class Database:
 		identifiers.insert(0, sql.Identifier(table))
 		query = sql.SQL("DELETE FROM {} WHERE " + " AND ".join(where_sql)).format(*identifiers)
 
-		cursor = self.get_cursor()
-		self._log.debug("Executing query: %s" % cursor.mogrify(query, replacements))
-		cursor.execute(query, replacements)
-
-		if commit:
-			self.commit()
-
-		result = cursor.rowcount
-		cursor.close()
-		return result
+		return self.execute(query, replacements, commit=commit)
 
 	def insert(self, table, data, commit=True, safe=False, constraints=None):
 		"""
@@ -194,16 +233,7 @@ class Database:
 		query = sql.SQL(protoquery).format(*identifiers)
 		replacements = (tuple(data.values()),)
 
-		cursor = self.get_cursor()
-		self._log.debug("Executing query: %s" % cursor.mogrify(query, replacements))
-		cursor.execute(query, replacements)
-
-		if commit:
-			self.commit()
-
-		result = cursor.rowcount
-		cursor.close()
-		return result
+		return self.execute(query, replacements, commit=commit)
 
 	def fetchall(self, query, *args):
 		"""
@@ -267,14 +297,3 @@ class Database:
 		Running queries after this is probably a bad idea!
 		"""
 		self.connection.close()
-
-	def get_cursor(self):
-		"""
-		Get a new cursor
-
-		Re-using cursors seems to give issues when using per-thread
-		connections, so simply instantiate a new one each time
-
-		:return: Cursor
-		"""
-		return self.connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
