@@ -5,6 +5,7 @@ import traceback
 import threading
 import time
 import abc
+import logging
 
 from dmi_scheduler.exceptions import WorkerInterruptedException
 
@@ -42,10 +43,13 @@ class BasicWorker(threading.Thread, metaclass=abc.ABCMeta):
 		"""
 		super().__init__()
 		self.name = self.type
-		self.log = logger
+		self._original_logger = logger
 		self.manager = manager
 		self.job = job
 		self.init_time = int(time.time())
+		
+		# Create a logger adapter that automatically includes worker type
+		self.log = self._create_logger_with_type(logger)
 
 	def run(self):
 		"""
@@ -98,6 +102,36 @@ class BasicWorker(threading.Thread, metaclass=abc.ABCMeta):
 		:return:
 		"""
 		self.interrupted = level
+		
+	def _create_logger_with_type(self, logger):
+		"""
+		Create a logger that automatically includes worker type in logs
+		
+		:param logger: Original logger instance
+		:return: Logger with worker type context
+		"""
+		# Create a custom filter that adds worker type to the log record
+		class WorkerTypeFilter(logging.Filter):
+			def __init__(self, worker_type):
+				super().__init__()
+				self.worker_type = worker_type
+				
+			def filter(self, record):
+				record._worker_type = self.worker_type
+				return True
+		
+		# Create a logger that's specifically for this worker
+		worker_logger = logging.getLogger(f"{logger.name}.{self.type}")
+		worker_logger.setLevel(logger.level)
+		
+		# Add the same handlers as the original logger
+		for handler in logger.handlers:
+			worker_logger.addHandler(handler)
+			
+		# Add our custom filter to add worker type
+		worker_logger.addFilter(WorkerTypeFilter(self.type))
+		
+		return worker_logger
 
 	@abc.abstractmethod
 	def work(self):

@@ -18,6 +18,7 @@ from dmi_scheduler.worker import BasicWorker
 from dmi_scheduler.queue import JobQueue
 from dmi_scheduler.database import Database
 from dmi_scheduler.exceptions import JobClaimedException
+from dmi_scheduler.log_formatter import WorkerAwareFormatter
 
 
 class WorkerManager(threading.Thread):
@@ -109,8 +110,11 @@ class WorkerManager(threading.Thread):
 				maxBytes=int(config.get("logsize", kwargs.get("logsize", 50 * 1024 * 1024))),
 				backupCount=config.get("logcount", kwargs.get("logcount", 1))
 			)
-			logformat = config.get("logformat", kwargs.get("logformat", "%(asctime)s [%(levelname)-5.5s]  %(message)s"))
-			handler.setFormatter(logging.Formatter(logformat))
+			# Format to include worker type when available
+			logformat = config.get("logformat", kwargs.get("logformat", "%(asctime)s [%(levelname)-5.5s]%(workertype)s  %(message)s"))
+			# Define how the worker type should appear in logs
+			formatter = WorkerAwareFormatter(logformat)
+			handler.setFormatter(formatter)
 
 			self._log = logging.getLogger("dmi-scheduler")
 			self._log.setLevel(config.get("loglevel", kwargs.get("loglevel", logging.INFO)))
@@ -118,7 +122,7 @@ class WorkerManager(threading.Thread):
 
 			if config.get("logstdout", kwargs.get("logstdout", True)):
 				consoleHandler = logging.StreamHandler(sys.stdout)
-				consoleHandler.setFormatter(logging.Formatter(logformat))
+				consoleHandler.setFormatter(formatter)
 				self._log.addHandler(consoleHandler)
 
 		else:

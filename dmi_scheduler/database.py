@@ -92,7 +92,7 @@ class Database:
 		Execute a query
 
 		:param string query: Query
-		:param args: Replacement values
+		:param replacements: Replacement values
 		:param cursor: Cursor to use. Default - use common cursor
 		:return None:
 		"""
